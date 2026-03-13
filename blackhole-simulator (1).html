@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Black Hole Simulator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #000;
+    overflow: hidden;
+    font-family: 'Rajdhani', sans-serif;
+    color: #fff;
+    user-select: none;
+  }
+
+  canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+
+  #ui {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  #panel {
+    position: fixed;
+    top: 24px; left: 24px;
+    pointer-events: all;
+    background: rgba(0,0,0,0.6);
+    border: 1px solid rgba(255,140,0,0.3);
+    border-radius: 4px;
+    padding: 20px 24px;
+    backdrop-filter: blur(12px);
+    min-width: 260px;
+    box-shadow: 0 0 40px rgba(255,100,0,0.08), inset 0 0 40px rgba(0,0,0,0.4);
+  }
+
+  #panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,140,0,0.8), transparent);
+  }
+
+  h1 {
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    color: #ff8c00;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    text-shadow: 0 0 20px rgba(255,140,0,0.6);
+  }
+
+  .subtitle {
+    font-size: 11px;
+    color: rgba(255,140,0,0.4);
+    letter-spacing: 2px;
+    margin-bottom: 22px;
+    text-transform: uppercase;
+  }
+
+  .control-group {
+    margin-bottom: 16px;
+  }
+
+  .control-label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .control-label span {
+    font-family: 'Orbitron', monospace;
+    color: #ff8c00;
+    font-size: 13px;
+  }
+
+  input[type="range"] {
+    width: 100%;
+    -webkit-appearance: none;
+    height: 2px;
+    background: rgba(255,140,0,0.2);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #ff8c00;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(255,140,0,0.8);
+  }
+
+  .btn {
+    width: 100%;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid rgba(255,140,0,0.5);
+    color: #ff8c00;
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+    margin-top: 4px;
+  }
+
+  .btn:hover {
+    background: rgba(255,140,0,0.1);
+    box-shadow: 0 0 20px rgba(255,140,0,0.3);
+  }
+
+  .btn.danger {
+    border-color: rgba(255,50,50,0.5);
+    color: #ff4444;
+  }
+  .btn.danger:hover {
+    background: rgba(255,50,50,0.1);
+    box-shadow: 0 0 20px rgba(255,50,50,0.3);
+  }
+
+  .divider {
+    height: 1px;
+    background: rgba(255,140,0,0.15);
+    margin: 16px 0;
+  }
+
+  #stats {
+    position: fixed;
+    top: 24px; right: 24px;
+    pointer-events: none;
+    text-align: right;
+  }
+
+  .stat {
+    margin-bottom: 10px;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.3);
+    text-transform: uppercase;
+  }
+
+  .stat-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 18px;
+    color: #fff;
+    line-height: 1.1;
+  }
+
+  .stat-value.orange { color: #ff8c00; text-shadow: 0 0 10px rgba(255,140,0,0.5); }
+  .stat-value.blue { color: #4af; text-shadow: 0 0 10px rgba(64,170,255,0.5); }
+  .stat-value.red { color: #f55; text-shadow: 0 0 10px rgba(255,80,80,0.5); }
+
+  #info {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.2);
+    text-align: center;
+    pointer-events: none;
+  }
+
+  #signature {
+    position: fixed;
+    bottom: 20px;
+    right: 24px;
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: rgba(255,140,0,0.7);
+    text-shadow: 0 0 12px rgba(255,140,0,0.4);
+    pointer-events: none;
+    text-transform: uppercase;
+  }
+
+  #signature::before {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 1px;
+    background: rgba(255,140,0,0.5);
+    vertical-align: middle;
+    margin-right: 10px;
+  }
+
+  .toggle-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .toggle-btn {
+    flex: 1;
+    padding: 7px 4px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.3);
+    font-family: 'Orbitron', monospace;
+    font-size: 8px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+    pointer-events: all;
+  }
+
+  .toggle-btn.active {
+    border-color: rgba(255,140,0,0.6);
+    color: #ff8c00;
+    background: rgba(255,140,0,0.08);
+    box-shadow: 0 0 10px rgba(255,140,0,0.2);
+  }
+
+  #add-burst {
+    margin-bottom: 8px;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<div id="panel">
+  <h1>Black Hole</h1>
+  <div class="subtitle">Singularity Engine v2.0</div>
+
+  <div class="control-group">
+    <div class="control-label">Particles to Add <span id="pCount">50</span></div>
+    <input type="range" id="particleSlider" min="1" max="500" value="50">
+  </div>
+
+  <button class="btn" id="add-burst">+ Spawn Particles</button>
+  <button class="btn danger" id="clearBtn">Clear All</button>
+
+  <div class="divider"></div>
+
+  <div class="control-group">
+    <div class="control-label">Gravity <span id="gravVal">1.0</span>×</div>
+    <input type="range" id="gravSlider" min="1" max="50" value="10" step="1">
+  </div>
+
+  <div class="control-group">
+    <div class="control-label">Black Hole Mass <span id="massVal">1.0</span>×</div>
+    <input type="range" id="massSlider" min="1" max="30" value="10" step="1">
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="control-label">Render Layers</div>
+  <div class="toggle-row">
+    <button class="toggle-btn active" id="tog-grid">Grid</button>
+    <button class="toggle-btn active" id="tog-stars">Stars</button>
+    <button class="toggle-btn active" id="tog-glow">Glow</button>
+    <button class="toggle-btn active" id="tog-jet">Jets</button>
+    <button class="toggle-btn active" id="tog-realistic">Realistic</button>
+  </div>
+</div>
+
+<div id="stats">
+  <div class="stat">
+    <div class="stat-label">Particles</div>
+    <div class="stat-value orange" id="s-particles">0</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Consumed</div>
+    <div class="stat-value red" id="s-consumed">0</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Singularity</div>
+    <div class="stat-value blue" id="s-mass">1.0</div>
+  </div>
+</div>
+
+<div id="info">DRAG TO REPOSITION · SCROLL TO RESIZE · SPACEBAR TO PAUSE</div>
+
+<div id="signature">Karthik RN</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+let W, H, cx, cy;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  cx = W / 2; cy = H / 2;
+  initStars();
+  initGrid();
+}
+window.addEventListener('resize', resize);
+
+// --- STATE ---
+let particles = [];
+let stars = [];
+let consumed = 0;
+let bhMass = 1.0;
+let paused = false;
+let showGrid = true, showStars = true, showGlow = true, showJet = true, realisticBH = true;
+let bhX, bhY, bhR = 40;
+let gravStrength = 1.0;
+let tick = 0;
+let jetParticles = [];
+
+// --- STARS ---
+let starCanvas, starCtx;
+function initStars() {
+  starCanvas = document.createElement('canvas');
+  starCanvas.width = W; starCanvas.height = H;
+  starCtx = starCanvas.getContext('2d');
+  stars = [];
+  const count = 800;
+  for (let i = 0; i < count; i++) {
+    stars.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: Math.random() * 1.5 + 0.2,
+      alpha: Math.random() * 0.8 + 0.2,
+      twinkle: Math.random() * Math.PI * 2,
+      speed: Math.random() * 0.02 + 0.005,
+      color: starColor()
+    });
+  }
+  // Nebula clouds
+  const nebulas = [
+    { x: W*0.2, y: H*0.3, r: 200, c: 'rgba(80,20,120,' },
+    { x: W*0.8, y: H*0.7, r: 180, c: 'rgba(20,60,120,' },
+    { x: W*0.5, y: H*0.1, r: 150, c: 'rgba(120,40,20,' },
+    { x: W*0.1, y: H*0.8, r: 160, c: 'rgba(20,100,80,' },
+  ];
+  starCtx.fillStyle = '#000005';
+  starCtx.fillRect(0, 0, W, H);
+  nebulas.forEach(n => {
+    const g = starCtx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.r);
+    g.addColorStop(0, n.c + '0.08)');
+    g.addColorStop(1, 'transparent');
+    starCtx.fillStyle = g;
+    starCtx.fillRect(0, 0, W, H);
+  });
+}
+
+function starColor() {
+  const r = Math.random();
+  if (r < 0.7) return '#ffffff';
+  if (r < 0.8) return '#aad4ff';
+  if (r < 0.9) return '#ffd080';
+  return '#ff9060';
+}
+
+// --- SPACETIME GRID ---
+let gridLines = [];
+function initGrid() {
+  // Will be drawn dynamically
+}
+
+// --- PARTICLES ---
+function spawnParticles(n) {
+  for (let i = 0; i < n; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = bhR * 3 + Math.random() * Math.min(W, H) * 0.38;
+    const px = bhX + Math.cos(angle) * dist;
+    const py = bhY + Math.sin(angle) * dist;
+    // Give tangential velocity for orbit
+    const speed = Math.sqrt(gravStrength * bhMass * 20 / dist) * (0.6 + Math.random() * 0.8);
+    const tangAngle = angle + Math.PI / 2 * (Math.random() > 0.5 ? 1 : -1);
+    particles.push({
+      x: px, y: py,
+      vx: Math.cos(tangAngle) * speed + (Math.random()-0.5)*1.5,
+      vy: Math.sin(tangAngle) * speed + (Math.random()-0.5)*1.5,
+      r: Math.random() * 2 + 0.5,
+      color: particleColor(),
+      alpha: 1,
+      trail: [],
+      trailLen: Math.floor(Math.random() * 20 + 8),
+      age: 0,
+    });
+  }
+}
+
+function particleColor() {
+  const palette = [
+    '#ff8c00','#ff4500','#ffd700','#ff6347',
+    '#00bfff','#7fffd4','#da70d6','#ff69b4',
+    '#adff2f','#ff1493','#40e0d0','#ffa07a'
+  ];
+  return palette[Math.floor(Math.random() * palette.length)];
+}
+
+// --- JET PARTICLES ---
+function emitJetParticles() {
+  if (!showJet) return;
+  for (let side of [-1, 1]) {
+    for (let i = 0; i < 2; i++) {
+      const spread = (Math.random() - 0.5) * 8;
+      jetParticles.push({
+        x: bhX + spread,
+        y: bhY,
+        vx: spread * 0.3,
+        vy: side * (4 + Math.random() * 4),
+        alpha: 0.8,
+        r: Math.random() * 3 + 1,
+        color: `hsl(${190 + Math.random()*40}, 100%, 70%)`,
+        life: 1
+      });
+    }
+  }
+}
+
+// --- PHYSICS ---
+function update() {
+  if (paused) return;
+  tick++;
+  bhR = 30 + bhMass * 3;
+
+  // Jet
+  if (tick % 2 === 0) emitJetParticles();
+
+  // Update jets
+  jetParticles = jetParticles.filter(j => j.life > 0.01);
+  jetParticles.forEach(j => {
+    j.x += j.vx;
+    j.y += j.vy;
+    j.life -= 0.025;
+    j.alpha = j.life * 0.8;
+    j.r *= 0.97;
+  });
+
+  // Update particles
+  const toRemove = [];
+  particles.forEach((p, i) => {
+    p.trail.push({ x: p.x, y: p.y, alpha: p.alpha });
+    if (p.trail.length > p.trailLen) p.trail.shift();
+
+    const dx = bhX - p.x;
+    const dy = bhY - p.y;
+    const distSq = dx * dx + dy * dy;
+    const dist = Math.sqrt(distSq);
+
+    if (dist < bhR * 0.85) {
+      toRemove.push(i);
+      consumed++;
+      bhMass = Math.min(bhMass + 0.02, 30);
+      document.getElementById('s-mass').textContent = bhMass.toFixed(2) + '×';
+      return;
+    }
+
+    const grav = gravStrength * bhMass * 600 / distSq;
+    p.vx += (dx / dist) * grav;
+    p.vy += (dy / dist) * grav;
+
+    // Speed cap (relativistic feel)
+    const spd = Math.sqrt(p.vx*p.vx + p.vy*p.vy);
+    const maxSpd = 20;
+    if (spd > maxSpd) {
+      p.vx = (p.vx / spd) * maxSpd;
+      p.vy = (p.vy / spd) * maxSpd;
+    }
+
+    p.x += p.vx;
+    p.y += p.vy;
+    p.age++;
+  });
+
+  // Remove consumed (reverse to preserve indices)
+  for (let i = toRemove.length - 1; i >= 0; i--) {
+    particles.splice(toRemove[i], 1);
+  }
+}
+
+// --- DRAW ---
+function drawStars() {
+  if (!showStars) return;
+  ctx.drawImage(starCanvas, 0, 0);
+  // Twinkle
+  stars.forEach(s => {
+    s.twinkle += s.speed;
+    const a = s.alpha * (0.6 + 0.4 * Math.sin(s.twinkle));
+    ctx.globalAlpha = a;
+    ctx.fillStyle = s.color;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+
+function drawSpacetimeGrid() {
+  if (!showGrid) return;
+  const gridSpacing = 60;
+  const cols = Math.ceil(W / gridSpacing) + 2;
+  const rows = Math.ceil(H / gridSpacing) + 2;
+  const ox = (W % gridSpacing) / 2;
+  const oy = (H % gridSpacing) / 2;
+
+  ctx.save();
+
+  for (let pass = 0; pass < 2; pass++) {
+    const isVert = pass === 0;
+    const count = isVert ? cols : rows;
+
+    for (let i = 0; i <= count; i++) {
+      const baseX = isVert ? ox + i * gridSpacing : 0;
+      const baseY = isVert ? 0 : oy + i * gridSpacing;
+      const steps = isVert ? rows * 3 : cols * 3;
+
+      ctx.beginPath();
+      let first = true;
+      for (let j = 0; j <= steps; j++) {
+        const t = j / steps;
+        let px = isVert ? baseX : t * W;
+        let py = isVert ? t * H : baseY;
+
+        // Warp toward black hole
+        const dx = bhX - px;
+        const dy = bhY - py;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const influence = Math.min(bhMass * bhR * 60 / (dist * dist + 1), 80);
+        const nx = dx / (dist + 0.001);
+        const ny = dy / (dist + 0.001);
+        px += nx * influence;
+        py += ny * influence;
+
+        if (first) { ctx.moveTo(px, py); first = false; }
+        else ctx.lineTo(px, py);
+      }
+
+      // Color based on distance from black hole
+      const lineMidX = isVert ? baseX : W/2;
+      const lineMidY = isVert ? H/2 : baseY;
+      const lineDist = Math.sqrt((bhX-lineMidX)**2 + (bhY-lineMidY)**2);
+      const proximity = Math.max(0, 1 - lineDist / 500);
+      const r = Math.floor(proximity * 255);
+      const g = Math.floor(proximity * 100);
+      const alpha = 0.07 + proximity * 0.25;
+
+      ctx.strokeStyle = `rgba(${r},${g},255,${alpha})`;
+      ctx.lineWidth = 0.5 + proximity * 1;
+      ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+}
+
+function drawBlackHole() {
+  if (realisticBH) {
+    drawBlackHoleRealistic();
+  } else {
+    drawBlackHoleClassic();
+  }
+}
+
+function drawBlackHoleClassic() {
+  // Accretion disk
+  const diskGrad = ctx.createRadialGradient(bhX, bhY, bhR * 0.5, bhX, bhY, bhR * 4);
+  diskGrad.addColorStop(0, 'rgba(255,140,0,0.0)');
+  diskGrad.addColorStop(0.2, 'rgba(255,100,0,0.25)');
+  diskGrad.addColorStop(0.5, 'rgba(255,60,0,0.15)');
+  diskGrad.addColorStop(0.8, 'rgba(200,30,0,0.05)');
+  diskGrad.addColorStop(1, 'transparent');
+  ctx.save();
+  ctx.scale(1, 0.3);
+  ctx.beginPath();
+  ctx.arc(bhX, bhY / 0.3, bhR * 4, 0, Math.PI * 2);
+  ctx.fillStyle = diskGrad;
+  ctx.fill();
+  ctx.restore();
+
+  // Photon sphere glow
+  if (showGlow) {
+    for (let ring = 4; ring >= 0; ring--) {
+      const glowR = bhR * (1.2 + ring * 0.6);
+      const glow = ctx.createRadialGradient(bhX, bhY, glowR * 0.7, bhX, bhY, glowR);
+      const a = [0.18, 0.12, 0.08, 0.05, 0.02][ring];
+      glow.addColorStop(0, `rgba(255,140,0,${a})`);
+      glow.addColorStop(1, 'transparent');
+      ctx.beginPath();
+      ctx.arc(bhX, bhY, glowR, 0, Math.PI * 2);
+      ctx.fillStyle = glow;
+      ctx.fill();
+    }
+  }
+
+  // Singularity
+  const sGrad = ctx.createRadialGradient(bhX, bhY, 0, bhX, bhY, bhR);
+  sGrad.addColorStop(0, '#000000');
+  sGrad.addColorStop(0.7, '#000000');
+  sGrad.addColorStop(0.85, 'rgba(0,0,0,0.9)');
+  sGrad.addColorStop(1, 'transparent');
+  ctx.beginPath();
+  ctx.arc(bhX, bhY, bhR, 0, Math.PI * 2);
+  ctx.fillStyle = sGrad;
+  ctx.fill();
+
+  // Event horizon ring
+  ctx.beginPath();
+  ctx.arc(bhX, bhY, bhR, 0, Math.PI * 2);
+  const ringGrad = ctx.createLinearGradient(bhX - bhR, bhY, bhX + bhR, bhY);
+  ringGrad.addColorStop(0, 'rgba(255,140,0,0.8)');
+  ringGrad.addColorStop(0.5, 'rgba(255,220,100,1)');
+  ringGrad.addColorStop(1, 'rgba(255,140,0,0.8)');
+  ctx.strokeStyle = ringGrad;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Inner lensing ring
+  ctx.beginPath();
+  ctx.arc(bhX, bhY, bhR * 0.6, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,200,100,0.2)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+function drawBlackHoleRealistic() {
+  const R         = bhR;
+  const shadowR   = R * 1.35;
+  const photonR   = R * 1.42;
+  const diskInner = R * 1.15;
+  const diskOuter = R * 5.5;
+  const tiltY     = 0.3;
+
+  // ── 1. OUTER CORONA GLOW ────────────────────────────────────────────────
+  if (showGlow) {
+    const corona = ctx.createRadialGradient(bhX, bhY, shadowR, bhX, bhY, R * 9);
+    corona.addColorStop(0,   'rgba(255,110,20,0.10)');
+    corona.addColorStop(0.3, 'rgba(255,80,10,0.05)');
+    corona.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.fillStyle = corona;
+    ctx.beginPath();
+    ctx.arc(bhX, bhY, R * 9, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // ── 2. ACCRETION DISK — back half ───────────────────────────────────────
+  ctx.save();
+  ctx.translate(bhX, bhY);
+
+  const DISK_RINGS = 18;
+  for (let i = DISK_RINGS; i >= 0; i--) {
+    const t     = i / DISK_RINGS;
+    const r     = diskInner + t * (diskOuter - diskInner);
+    const rPrev = diskInner + Math.max(0, t - 1/DISK_RINGS) * (diskOuter - diskInner);
+    const thick = Math.max(1, (r - rPrev) * tiltY * 1.1);
+    const hot   = 1 - t;
+    const cr    = 255;
+    const cg    = Math.round(140 + 115 * hot);
+    const cb    = Math.round(hot * hot * 180);
+    const alphaLeft = (0.12 + 0.20 * hot) * 0.9;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r, r * tiltY, 0, Math.PI, Math.PI * 2);
+    ctx.strokeStyle = `rgba(${cr},${Math.min(255,cg+20)},${cb},${alphaLeft.toFixed(3)})`;
+    ctx.lineWidth   = thick;
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // ── 3. SHADOW ────────────────────────────────────────────────────────────
+  ctx.fillStyle = '#000000';
+  ctx.beginPath();
+  ctx.arc(bhX, bhY, shadowR, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── 4. PHOTON RING ───────────────────────────────────────────────────────
+  const pgGrad = ctx.createRadialGradient(bhX, bhY, photonR * 0.75, bhX, bhY, photonR * 2.0);
+  pgGrad.addColorStop(0,    'rgba(255,190,80,0.0)');
+  pgGrad.addColorStop(0.45, 'rgba(255,160,40,0.18)');
+  pgGrad.addColorStop(0.75, 'rgba(255,120,10,0.08)');
+  pgGrad.addColorStop(1,    'rgba(0,0,0,0)');
+  ctx.fillStyle = pgGrad;
+  ctx.beginPath();
+  ctx.arc(bhX, bhY, photonR * 2.0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const ringSegs = 72;
+  for (let s = 0; s < ringSegs; s++) {
+    const a0  = (s / ringSegs) * Math.PI * 2;
+    const a1  = ((s + 1) / ringSegs) * Math.PI * 2;
+    const mid = (a0 + a1) * 0.5;
+    const boost = 0.5 + 0.5 * Math.sin(mid);
+    const w     = 1.5 + 3.5 * boost;
+    const alpha = 0.4 + 0.6 * boost;
+    const cg2   = Math.round(160 - 80 * (1 - boost));
+    const cb2   = Math.round(40  + 100 * boost);
+    ctx.beginPath();
+    ctx.arc(bhX, bhY, photonR, a0, a1);
+    ctx.strokeStyle = `rgba(255,${cg2},${cb2},${alpha.toFixed(3)})`;
+    ctx.lineWidth   = w;
+    ctx.stroke();
+  }
+
+  // ── 5. ACCRETION DISK — front half ──────────────────────────────────────
+  ctx.save();
+  ctx.translate(bhX, bhY);
+
+  for (let i = DISK_RINGS; i >= 0; i--) {
+    const t     = i / DISK_RINGS;
+    const r     = diskInner + t * (diskOuter - diskInner);
+    const rPrev = diskInner + Math.max(0, t - 1/DISK_RINGS) * (diskOuter - diskInner);
+    const thick = Math.max(1.5, (r - rPrev) * tiltY * 1.3);
+    const hot   = 1 - t;
+    const cr    = 255;
+    const cg    = Math.round(150 + 105 * hot);
+    const cb    = Math.round(hot * hot * 200);
+    const alphaFront = (0.55 + 0.35 * hot);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r, r * tiltY, 0, 0, Math.PI);
+    ctx.strokeStyle = `rgba(${cr},${cg},${cb},${alphaFront.toFixed(3)})`;
+    ctx.lineWidth   = thick;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r, r * tiltY, 0, 0, Math.PI * 0.5);
+    ctx.strokeStyle = `rgba(255,${Math.min(255,cg+40)},${Math.min(255,cb+60)},${Math.min(1, alphaFront * 0.6).toFixed(3)})`;
+    ctx.lineWidth   = thick * 0.5;
+    ctx.stroke();
+  }
+
+  // ISCO bright inner rim
+  ctx.beginPath();
+  ctx.ellipse(0, 0, diskInner, diskInner * tiltY, 0, 0, Math.PI);
+  ctx.strokeStyle = 'rgba(255,255,220,0.75)';
+  ctx.lineWidth   = 2;
+  ctx.stroke();
+  ctx.restore();
+
+  // ── 6. RE-FILL shadow ────────────────────────────────────────────────────
+  ctx.fillStyle = '#000000';
+  ctx.beginPath();
+  ctx.arc(bhX, bhY, shadowR * 0.98, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── 7. LENSING WARP HINT ─────────────────────────────────────────────────
+  const lensGrad = ctx.createRadialGradient(bhX, bhY, shadowR * 0.9, bhX, bhY, shadowR * 1.6);
+  lensGrad.addColorStop(0,   'rgba(0,0,0,0)');
+  lensGrad.addColorStop(0.5, 'rgba(255,160,40,0.06)');
+  lensGrad.addColorStop(1,   'rgba(0,0,0,0)');
+  ctx.fillStyle = lensGrad;
+  ctx.beginPath();
+  ctx.arc(bhX, bhY, shadowR * 1.6, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawJets() {
+  if (!showJet) return;
+  jetParticles.forEach(j => {
+    ctx.globalAlpha = j.alpha;
+    const g = ctx.createRadialGradient(j.x, j.y, 0, j.x, j.y, j.r * 3);
+    g.addColorStop(0, j.color);
+    g.addColorStop(1, 'transparent');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(j.x, j.y, j.r * 3, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  // Jet beam
+  if (showGlow && particles.length > 0) {
+    for (let side of [-1, 1]) {
+      const beamLen = 100 + bhMass * 10;
+      const g = ctx.createLinearGradient(bhX, bhY, bhX, bhY + side * beamLen);
+      g.addColorStop(0, 'rgba(100,200,255,0.3)');
+      g.addColorStop(1, 'transparent');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(bhX - 4, bhY);
+      ctx.lineTo(bhX + 4, bhY);
+      ctx.lineTo(bhX + 2, bhY + side * beamLen);
+      ctx.lineTo(bhX - 2, bhY + side * beamLen);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+}
+
+function drawParticles() {
+  particles.forEach(p => {
+    // Trail
+    p.trail.forEach((pt, ti) => {
+      const t = ti / p.trail.length;
+      ctx.globalAlpha = t * 0.5 * p.alpha;
+      ctx.fillStyle = p.color;
+      const tr = p.r * t * 0.8;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, Math.max(tr, 0.3), 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Particle glow
+    const dist = Math.sqrt((bhX - p.x)**2 + (bhY - p.y)**2);
+    const proximity = Math.max(0, 1 - dist / 300);
+    if (showGlow) {
+      ctx.globalAlpha = 0.3 * proximity;
+      const g2 = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4);
+      g2.addColorStop(0, p.color);
+      g2.addColorStop(1, 'transparent');
+      ctx.fillStyle = g2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Core
+    ctx.globalAlpha = p.alpha;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+
+function drawHUD() {
+  // Scanline pulse
+  ctx.fillStyle = `rgba(255,140,0,${0.01 + 0.005 * Math.sin(tick * 0.05)})`;
+  ctx.fillRect(0, 0, W, H);
+
+  // Corner brackets
+  const bSize = 20, bGap = 6;
+  ctx.strokeStyle = 'rgba(255,140,0,0.4)';
+  ctx.lineWidth = 1;
+  [[bGap, bGap], [W-bGap, bGap], [bGap, H-bGap], [W-bGap, H-bGap]].forEach(([x,y]) => {
+    const sx = x === bGap ? 1 : -1;
+    const sy = y === bGap ? 1 : -1;
+    ctx.beginPath();
+    ctx.moveTo(x + sx * bSize, y);
+    ctx.lineTo(x, y);
+    ctx.lineTo(x, y + sy * bSize);
+    ctx.stroke();
+  });
+}
+
+// --- RENDER LOOP ---
+function render() {
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#000005';
+  ctx.fillRect(0, 0, W, H);
+
+  drawStars();
+  drawSpacetimeGrid();
+  drawJets();
+  drawParticles();
+  drawBlackHole();
+  drawHUD();
+
+  document.getElementById('s-particles').textContent = particles.length;
+  document.getElementById('s-consumed').textContent = consumed;
+
+  update();
+  requestAnimationFrame(render);
+}
+
+// --- INPUT ---
+let dragging = false, dragOffX = 0, dragOffY = 0;
+canvas.addEventListener('mousedown', e => {
+  dragging = true;
+  dragOffX = e.clientX - bhX;
+  dragOffY = e.clientY - bhY;
+});
+canvas.addEventListener('mousemove', e => {
+  if (dragging) {
+    bhX = e.clientX - dragOffX;
+    bhY = e.clientY - dragOffY;
+  }
+});
+canvas.addEventListener('mouseup', () => dragging = false);
+canvas.addEventListener('wheel', e => {
+  bhR = Math.max(15, Math.min(100, bhR + e.deltaY * 0.05));
+  bhMass = Math.max(1, Math.min(30, bhMass + e.deltaY * 0.005));
+  document.getElementById('s-mass').textContent = bhMass.toFixed(2) + '×';
+});
+
+canvas.addEventListener('touchstart', e => {
+  const t = e.touches[0];
+  dragging = true;
+  dragOffX = t.clientX - bhX;
+  dragOffY = t.clientY - bhY;
+}, {passive: true});
+canvas.addEventListener('touchmove', e => {
+  if (dragging) {
+    const t = e.touches[0];
+    bhX = t.clientX - dragOffX;
+    bhY = t.clientY - dragOffY;
+  }
+}, {passive: true});
+canvas.addEventListener('touchend', () => dragging = false);
+
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space') paused = !paused;
+});
+
+// --- UI ---
+const pSlider = document.getElementById('particleSlider');
+const pCount = document.getElementById('pCount');
+pSlider.addEventListener('input', () => pCount.textContent = pSlider.value);
+
+document.getElementById('add-burst').addEventListener('click', () => {
+  spawnParticles(parseInt(pSlider.value));
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  particles = [];
+  jetParticles = [];
+  consumed = 0;
+  bhMass = 1;
+  document.getElementById('s-consumed').textContent = '0';
+  document.getElementById('s-mass').textContent = '1.0×';
+});
+
+const gravSlider = document.getElementById('gravSlider');
+document.getElementById('gravVal').textContent = '1.0';
+gravSlider.addEventListener('input', () => {
+  gravStrength = gravSlider.value / 10;
+  document.getElementById('gravVal').textContent = gravStrength.toFixed(1);
+});
+
+const massSlider = document.getElementById('massSlider');
+document.getElementById('massVal').textContent = '1.0';
+massSlider.addEventListener('input', () => {
+  bhMass = massSlider.value / 10;
+  document.getElementById('massVal').textContent = bhMass.toFixed(1);
+  document.getElementById('s-mass').textContent = bhMass.toFixed(2) + '×';
+});
+
+function setupToggle(id, getter, setter) {
+  const btn = document.getElementById(id);
+  btn.addEventListener('click', () => {
+    setter(!getter());
+    btn.classList.toggle('active', getter());
+  });
+}
+setupToggle('tog-grid', () => showGrid, v => showGrid = v);
+setupToggle('tog-stars', () => showStars, v => showStars = v);
+setupToggle('tog-glow', () => showGlow, v => showGlow = v);
+setupToggle('tog-jet', () => showJet, v => showJet = v);
+setupToggle('tog-realistic', () => realisticBH, v => realisticBH = v);
+
+// --- INIT ---
+resize();
+bhX = cx; bhY = cy;
+spawnParticles(80);
+render();
+</script>
+</body>
+</html>
